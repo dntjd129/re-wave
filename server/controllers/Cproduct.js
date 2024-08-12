@@ -17,13 +17,30 @@ exports.productPage = async (req, res) => {
       where: { productId: req.params.productId },
     });
 
-    // 배열 생성
-    const colors = productOption.color ? productOption.color.split(",") : [];
-    const size = productOption.size ? [productOption.size] : [];
-    console.log(colors);
+    // productOption.color가 배열인지 JSON 문자열인지 확인
+    let colors = [];
+    if (productOption.color) {
+      if (typeof productOption.color === "string") {
+        // JSON 문자열인 경우
+        colors = JSON.parse(productOption.color);
+      } else if (Array.isArray(productOption.color)) {
+        // 이미 배열인 경우
+        colors = productOption.color;
+      }
+    }
+
+    let size = [];
+    if (productOption.size) {
+      if (typeof productOption.size === "string") {
+        // JSON 문자열인 경우
+        size = JSON.parse(productOption.size);
+      } else if (Array.isArray(productOption.size)) {
+        // 이미 배열인 경우
+        size = productOption.size;
+      }
+    }
 
     res.json({ productDetail, categoryName, productOption, colors, size });
-    console.log(categoryName);
   } catch (error) {
     console.error(error);
     res.status(500).send("상품 상세 페이지 오류");

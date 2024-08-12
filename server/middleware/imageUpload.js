@@ -1,50 +1,42 @@
-const AWS = require("aws-sdk");
 const multer = require("multer");
-const multer3 = require("multer-s3");
-const dotenv = require("dotenv");
 const path = require("path");
 
-dotenv.config();
-
-AWS.config.update({
-  region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// 이미지 저장 경로와 파일 이름 설정
+const thumbnailStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/thumbnails/"); // 썸네일 이미지를 저장할 경로
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // 파일 이름 설정
+  },
 });
 
-const s3 = new AWS.S3();
-const allowedExtensions = [".png", ".jpg", ".jpeg", ".bmp"];
+const detailStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/details/"); // 상세 이미지를 저장할 경로
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // 파일 이름 설정
+  },
+});
+
+// 파일 필터 (선택사항)
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Not an image! Please upload an image."), false);
+  }
+};
 
 const thumbnailUpload = multer({
-  storage: multer3({
-    s3: s3,
-    bucket: "thewave-bucket",
-    key: (req, file, callback) => {
-      const uploadDirectory = "thumbnails";
-      const extension = path.extname(file.originalname);
-      if (!allowedExtensions.includes(extension)) {
-        return callback(new Error("wrong extension"));
-      }
-      callback(null, `${uploadDirectory}/${Date.now()}_${file.originalname}`);
-    },
-    acl: "public-read-write",
-  }),
+  storage: thumbnailStorage,
+  fileFilter: fileFilter,
 });
 
 const detailUpload = multer({
-  storage: multer3({
-    s3: s3,
-    bucket: "thewave-bucket",
-    key: (req, file, callback) => {
-      const uploadDirectory = "details";
-      const extension = path.extname(file.originalname);
-      if (!allowedExtensions.includes(extension)) {
-        return callback(new Error("wrong extension"));
-      }
-      callback(null, `${uploadDirectory}/${Date.now()}_${file.originalname}`);
-    },
-    acl: "public-read-write",
-  }),
+  storage: detailStorage,
+  fileFilter: fileFilter,
 });
 
 module.exports = { thumbnailUpload, detailUpload };

@@ -102,10 +102,10 @@ exports.snsLogin = async (req, res) => {
         gender: data.profile.gender || "M",
       });
 
-      const userAddress = await db.address.create({
-        userNumber: userInfo.userNumber,
-        address: "전북 군산",
-      });
+      // const userAddress = await db.address.create({
+      //   userNumber: userInfo.userNumber,
+      //   address: "전북 군산",
+      // });
 
       const { accessToken } = await generateAccessTokenSNS(userInfo);
       res.send({

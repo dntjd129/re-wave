@@ -1,32 +1,22 @@
-const http = require("http");
-const fs = require("fs");
 const express = require("express");
-const app = express();
 const cors = require("cors");
 const path = require("path");
 const session = require("express-session");
-const PORT = 8000;
 
-// HTTPS 설정 제거
-// const https = require("https");
-// const options = {
-//   key: fs.readFileSync("/etc/letsencrypt/live/thewavemarket.co.kr/privkey.pem"),
-//   cert: fs.readFileSync("/etc/letsencrypt/live/thewavemarket.co.kr/fullchain.pem"),
-// };
+const app = express();
+const PORT = 8000;
 
 require("dotenv").config();
 
-const server = http.createServer(app);
-
-// const https_server = https.createServer(options, app); // HTTPS 서버 제거
-
+// 미들웨어 설정
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const publicPath = path.join(__dirname, "public");
-app.use(express.static(publicPath));
+// 정적 파일 경로 설정
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // 이미지 업로드를 위한 정적 파일 제공
 
+// 세션 설정
 app.use(
   session({
     secret: "secret key",
@@ -38,6 +28,7 @@ app.use(
   })
 );
 
+// 라우터 설정
 const authRouter = require("./routes/auth");
 const mypageRouter = require("./routes/mypage");
 const categoryRouter = require("./routes/category");
@@ -60,12 +51,7 @@ app.use("/api/admin/users", adminUsersRouter);
 app.use("/api/admin/products", adminProductsRouter);
 app.use("/api/admin/orders", adminOrdersRouter);
 
-// http 서버 오픈
-server.listen(PORT, function () {
-  console.log(`Server Open: ${PORT}`);
+// 서버 실행
+app.listen(PORT, function () {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
-
-// HTTPS 서버 오픈 부분 제거
-// https_server.listen(https_port, function () {
-//   console.log(`HTTPS Server Open: ${https_port}`);
-// });

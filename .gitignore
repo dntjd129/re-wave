@@ -1,0 +1,12 @@
+node_modules/
+package-lock.json
+ca.crt
+ca.key
+cert.crt
+cert.key
+.env
+.env.development
+client/.env.development
+server/app.js
+server/app.js
+.env.test

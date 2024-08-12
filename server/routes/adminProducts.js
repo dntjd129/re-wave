@@ -15,14 +15,14 @@ router.post("/add", controller.createAdminProduct);
 // 상품 등록 - 썸네일 사진 등록
 router.post(
   "/add/thumbnail",
-  thumbnailUpload.single("thumbnailUrl"),
+  thumbnailUpload.single("thumbnail"), // 필드 이름 수정
   controller.uploadThumbnail
 );
 
 // 상품 등록 - 상세 사진 등록
 router.post(
   "/add/detail",
-  detailUpload.array("detailUrls", 10),
+  detailUpload.array("detailUrls", 10), // 필드 이름 수정
   controller.uploadDetails
 );
 
@@ -35,14 +35,14 @@ router.patch("/:productId/edit", controller.editAdminProduct);
 // 썸네일 사진 수정
 router.patch(
   "/:productId/edit/thumbnail",
-  thumbnailUpload.single("thumbnailUrl"),
+  thumbnailUpload.single("thumbnail"), // 필드 이름 수정
   controller.editThumbnail
 );
 
 // 상세 사진 수정
 router.patch(
   "/:productId/edit/detail",
-  detailUpload.array("detailUrls"),
+  detailUpload.array("detailUrls"), // 필드 이름 수정
   controller.editDetails
 );
 

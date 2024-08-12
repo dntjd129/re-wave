@@ -2,11 +2,11 @@ const {
   db,
   db: { Op },
 } = require("../models/index");
+const { thumbnailUpload, detailUpload } = require("../middleware/imageUpload");
 
 // 전체 등록상품 조회
 exports.getAdminAllProducts = async (req, res) => {
   try {
-    console.log(req.params);
     const products = await db.products.findAll({
       include: [
         {
@@ -44,7 +44,6 @@ exports.deleteAdminProductsChecked = async (req, res) => {
 
 // 상품 등록
 exports.createAdminProduct = async (req, res) => {
-  console.log(req.body);
   try {
     const {
       categoryName,
@@ -54,9 +53,12 @@ exports.createAdminProduct = async (req, res) => {
       productStatus,
       color,
       size,
-      thumbnailUrl, // 추가
-      detailUrls, // 추가
     } = req.body;
+
+    // Multer가 저장한 파일 경로 얻기
+    const thumbnailUrl = req.file ? req.file.path : null;
+    const detailUrls = req.files ? req.files.map((file) => file.path) : [];
+
     // 카테고리 이름으로 categoryId 찾기
     const category = await db.categories.findOne({ where: { categoryName } });
     if (!category) {
@@ -72,7 +74,7 @@ exports.createAdminProduct = async (req, res) => {
       productInfo,
       productStatus,
       thumbnailUrl,
-      detailUrls,
+      detailUrls: detailUrls.join(), // 배열을 문자열로 변환
     });
 
     const option = await db.productoption.create({
@@ -80,7 +82,7 @@ exports.createAdminProduct = async (req, res) => {
       color, // 색상
       size, // 사이즈
     });
-    console.log(option);
+
     res.send(newProduct);
   } catch (error) {
     console.error(error);
@@ -89,37 +91,27 @@ exports.createAdminProduct = async (req, res) => {
 };
 
 // 사진 등록 - 썸네일
-exports.uploadThumbnail = async (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("썸네일 파일이 업로드되지 않았습니다.");
-  }
-  try {
-    // s3의 파일 url
-    const thumbnailUrl = req.file.location;
-    res.send({ thumbnailUrl });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("썸네일 등록 오류");
-  }
+exports.uploadThumbnail = (req, res, next) => {
+  thumbnailUpload.single("thumbnailUrl")(req, res, function (err) {
+    if (err) {
+      return res.status(400).send(err.message);
+    }
+    next();
+  });
 };
 
 // 사진 등록 - 상세 사진
-exports.uploadDetails = async (req, res) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).send("상세 사진 파일이 업로드되지 않았습니다.");
-  }
-  try {
-    const detailUrls = req.files.map((file) => file.location);
-    res.send({ detailUrls });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("상세 사진 등록 오류");
-  }
+exports.uploadDetails = (req, res, next) => {
+  detailUpload.array("detailUrls", 10)(req, res, function (err) {
+    if (err) {
+      return res.status(400).send(err.message);
+    }
+    next();
+  });
 };
 
 // 등록상품 상세 조회
 exports.getAdminProduct = async (req, res) => {
-  console.log(req.params);
   try {
     const { productId } = req.params;
     const product = await db.products.findOne({
@@ -150,22 +142,23 @@ exports.editAdminProduct = async (req, res) => {
       productPrice,
       productInfo,
       productStatus,
-      thumbnailUrl,
-      detailUrls,
       color,
       size,
     } = req.body;
 
+    const thumbnailUrl = req.file ? req.file.path : null;
+    const detailUrls = req.files ? req.files.map((file) => file.path) : [];
+
     const category = await db.categories.findOne({ where: { categoryName } });
     if (!category) {
-      return res.status(400).send("카테코리명 오류");
+      return res.status(400).send("카테고리명 오류");
     }
 
     const categoryId = category.categoryId;
 
     const product = await db.products.findByPk(productId);
     if (!product) {
-      return res.status(404).send("상품을 조회 오류");
+      return res.status(404).send("상품 조회 오류");
     }
 
     const updatedProduct = await product.update({
@@ -175,7 +168,7 @@ exports.editAdminProduct = async (req, res) => {
       productInfo,
       productStatus,
       thumbnailUrl,
-      detailUrls,
+      detailUrls: detailUrls.join(), // 배열을 문자열로 변환
     });
 
     const productOption = await db.productoption.findOne({
@@ -200,8 +193,12 @@ exports.editAdminProduct = async (req, res) => {
 // 썸네일 사진 수정
 exports.editThumbnail = async (req, res) => {
   try {
-    const thumbnailUrl = req.file.location;
+    const thumbnailUrl = req.file ? req.file.path : null;
     const productId = req.params.productId;
+
+    if (!thumbnailUrl) {
+      return res.status(400).send("썸네일 파일이 없습니다.");
+    }
 
     await db.products.update({ thumbnailUrl }, { where: { productId } });
     res.send({ thumbnailUrl });
@@ -214,11 +211,15 @@ exports.editThumbnail = async (req, res) => {
 // 상세 사진 수정
 exports.editDetails = async (req, res) => {
   try {
-    const detailUrls = req.files.map((file) => file.location);
+    const detailUrls = req.files ? req.files.map((file) => file.path) : [];
     const productId = req.params.productId;
 
+    if (detailUrls.length === 0) {
+      return res.status(400).send("상세 사진 파일이 없습니다.");
+    }
+
     await db.products.update(
-      { detailUrls: detailUrls.join() },
+      { detailUrls: detailUrls.join() }, // 배열을 문자열로 변환
       { where: { productId } }
     );
     res.send({ detailUrls });
